@@ -19,7 +19,6 @@ void decode_B_type(uint32_t instruction, char* result, size_t buf_size, uint32_t
 void decode_U_type(uint32_t instruction, char* result, size_t buf_size);
 void decode_J_type(uint32_t instruction, char* result, size_t buf_size, uint32_t addr, struct symbols* symbols);
 
-
 void disassemble(uint32_t addr, uint32_t instruction, char* result, size_t buf_size, struct symbols* symbols){
     uint32_t opcode = instruction & 0x7F;
     switch (opcode) {
