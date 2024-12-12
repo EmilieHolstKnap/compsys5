@@ -1,0 +1,21 @@
+PC: 0x00010180, Instruction: 0x00002197
+PC: 0x00010184, Instruction: 0xBEE18193
+PC: 0x00010188, Instruction: 0x01000537
+PC: 0x0001018C, Instruction: 0x00050113
+PC: 0x00010190, Instruction: 0x02000537
+PC: 0x000103F0, Instruction: 0x260000EF
+PC: 0x000103F4, Instruction: 0x000117B7
+PC: 0x000103F8, Instruction: 0x5607A623
+PC: 0x000103FC, Instruction: 0x000117B7
+PC: 0x00010400, Instruction: 0x56A7A823
+PC: 0x00010194, Instruction: 0x00008067
+PC: 0x00010198, Instruction: 0x01000537
+PC: 0x000101A0, Instruction: 0x008000EF
+PC: 0x000101A4, Instruction: 0xFF010113
+PC: 0x000101A8, Instruction: 0x00112623
+PC: 0x000101AC, Instruction: 0x00450593
+PC: 0x000101B0, Instruction: 0x00052503
+PC: 0x002100DC, Instruction: 0xF2DFF0EF
+PC: 0x01000000, Instruction: 0x0001019C
+
+Simulated 19 instructions in 22942 host ticks (0.000828 MIPS)

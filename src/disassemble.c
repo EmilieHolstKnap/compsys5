@@ -3,15 +3,6 @@
 #include <stdint.h>
 #include <string.h>
 
-typedef enum {
-    R_TYPE = 0x33,
-    I_TYPE = 0x13,
-    S_TYPE = 0x23,
-    SB_TYPE = 0x63,
-    U_TYPE = 0x37,
-    UJ_TYPE = 0x6F
-} types;
-
 void decode_R_type(uint32_t instruction, char* result, size_t buf_size);
 void decode_I_type(uint32_t instruction, char* result, size_t buf_size, uint32_t addr, struct symbols* symbols);
 void decode_S_type(uint32_t instruction, char* result, size_t buf_size);
@@ -19,31 +10,46 @@ void decode_B_type(uint32_t instruction, char* result, size_t buf_size, uint32_t
 void decode_U_type(uint32_t instruction, char* result, size_t buf_size);
 void decode_J_type(uint32_t instruction, char* result, size_t buf_size, uint32_t addr, struct symbols* symbols);
 
-void disassemble(uint32_t addr, uint32_t instruction, char* result, size_t buf_size, struct symbols* symbols){
+void disassemble(uint32_t addr, uint32_t instruction, char* result, size_t buf_size, struct symbols* symbols) {
+    
+    if (instruction == 0x00000000) {
+        snprintf(result, buf_size, "nop");
+        return;
+    }
     uint32_t opcode = instruction & 0x7F;
     switch (opcode) {
-        case R_TYPE:
+        case 0x33:  // R-Type
             decode_R_type(instruction, result, buf_size);
             break;
-        case I_TYPE:
+        case 0x03:  // I-Type (loads)
+        case 0x13:  // I-Type (arithmetic immediate)
+        case 0x67:  // I-Type (jalr)
             decode_I_type(instruction, result, buf_size, addr, symbols);
             break;
-        case S_TYPE:
+        case 0x23:  // S-Type
             decode_S_type(instruction, result, buf_size);
             break;
-        case SB_TYPE:
+        case 0x63:  // SB-Type
             decode_B_type(instruction, result, buf_size, addr, symbols);
             break;
-        case U_TYPE:
+        case 0x37:  // U-Type
+        case 0x17:
             decode_U_type(instruction, result, buf_size);
             break;
-        case UJ_TYPE:
+        case 0x6F:  // UJ-Type
             decode_J_type(instruction, result, buf_size, addr, symbols);
             break;
         default:
             snprintf(result, buf_size, "Unknown instruction (0x%08x)", instruction);
     }
 }
+
+int32_t sign_extend(int32_t value, int bits) {
+    int shift = 32 - bits;
+    return (value << shift) >> shift;
+}
+
+
 
 //R-Type instructions
 void decode_R_type(uint32_t instruction, char* result, size_t buf_size){
@@ -69,7 +75,6 @@ void decode_R_type(uint32_t instruction, char* result, size_t buf_size){
         else if (funct3 == 0x5) snprintf(result, buf_size, "sra x%d, x%d, x%d", rd, rs1, rs2);
         else snprintf(result, buf_size, "Unknown R-Type");
     }
-
     //RV32M instructions
     else if (funct7 == 0x01) {
         if (funct3 == 0x0) snprintf(result, buf_size, "mul x%d, x%d, x%d", rd, rs1, rs2);
@@ -91,7 +96,7 @@ void decode_I_type(uint32_t instruction, char* result, size_t buf_size, uint32_t
     uint32_t rd = (instruction >> 7) & 0x1F;
     uint32_t funct3 = (instruction >> 12) & 0x07;
     uint32_t rs1 = (instruction >> 15) & 0x1F;
-    int32_t imm = (int32_t)(instruction >> 20); 
+    int32_t imm = sign_extend((instruction >> 20), 12); 
 
     if ((instruction & 0x7F) == 0x03) {  // Load instructions
         switch (funct3) {
@@ -103,12 +108,24 @@ void decode_I_type(uint32_t instruction, char* result, size_t buf_size, uint32_t
             default: snprintf(result, buf_size, "Unknown I-Type load");
         }
     } else if ((instruction & 0x7F) == 0x13) {  // Arithmetic Immediate
-        if (funct3 == 0x0) snprintf(result, buf_size, "addi x%d, x%d, %d", rd, rs1, imm);
-        else snprintf(result, buf_size, "Unknown I-Type");
-    } else {
-        snprintf(result, buf_size, "Unknown I-Type");
+        switch (funct3) {
+            case 0x0: snprintf(result, buf_size, "addi x%d, x%d, %d", rd, rs1, imm); break;
+            case 0x2: snprintf(result, buf_size, "slti x%d, x%d, %d", rd, rs1, imm); break;
+            case 0x3: snprintf(result, buf_size, "sltiu x%d, x%d, %d", rd, rs1, imm); break;
+            case 0x4: snprintf(result, buf_size, "xori x%d, x%d, %d", rd, rs1, imm); break;
+            case 0x6: snprintf(result, buf_size, "ori x%d, x%d, %d", rd, rs1, imm); break;
+            case 0x7: snprintf(result, buf_size, "andi x%d, x%d, %d", rd, rs1, imm); break;
+            default: snprintf(result, buf_size, "Unknown I-Type");
+        } 
+    } else if ((instruction & 0x7F) == 0x67) {  // jalr
+    snprintf(result, buf_size, "jalr x%d, %d(x%d)", rd, imm, rs1);
+    } else if ((instruction & 0x7F) == 0x73) { // ECALL
+        if (imm == 0) {
+            snprintf(result, buf_size, "ecall");
+        } else {
+            snprintf(result, buf_size, "Unknown I-Type");
+        }
     }
-
 }
 
 //S-Type instructions
@@ -116,13 +133,17 @@ void decode_S_type(uint32_t instruction, char* result, size_t buf_size) {
     uint32_t funct3 = (instruction >> 12) & 0x07;
     uint32_t rs1 = (instruction >> 15) & 0x1F;
     uint32_t rs2 = (instruction >> 20) & 0x1F;
-    int32_t imm = ((instruction >> 7) & 0x1F) | ((instruction >> 25) << 5); //Combine imm[4:0] and imm[11:5]
+    int32_t imm = sign_extend(((instruction >> 7) & 0x1F) | ((instruction >> 25) << 5), 12);; //Combine imm[4:0] and imm[11:5]
 
-    if (funct3 == 0x2) {
+    if (funct3 == 0x0) {
+        snprintf(result, buf_size, "sb x%d, %d(x%d)", rs2, imm, rs1);
+    } else if (funct3 == 0x1) {
+        snprintf(result, buf_size, "sh x%d, %d(x%d)", rs2, imm, rs1);
+    } else if (funct3 == 0x2) {
         snprintf(result, buf_size, "sw x%d, %d(x%d)", rs2, imm, rs1);
     } else {
         snprintf(result, buf_size, "Unknown S-Type");
-    }
+    }   
 }
 
 //SB-Type instructions
@@ -130,8 +151,8 @@ void decode_B_type(uint32_t instruction, char* result, size_t buf_size, uint32_t
     uint32_t funct3 = (instruction >> 12) & 0x07;
     uint32_t rs1 = (instruction >> 15) & 0x1F;
     uint32_t rs2 = (instruction >> 20) & 0x1F;
-    int32_t imm = ((instruction & 0x80) >> 7) | ((instruction & 0x7E000000) >> 20) |
-                  ((instruction & 0xF00) >> 7) | ((instruction & 0x80000000) >> 19);
+    int32_t imm = sign_extend(((instruction & 0x80) << 4) | ((instruction >> 7) & 0x1E) |
+                          ((instruction >> 20) & 0x7E0) | ((instruction >> 19) & 0x1000), 13);
     imm <<= 1;
 
     switch (funct3) {
@@ -155,8 +176,8 @@ void decode_U_type(uint32_t instruction, char* result, size_t buf_size) {
 //UJ-Type instructions
 void decode_J_type(uint32_t instruction, char* result, size_t buf_size, uint32_t addr, struct symbols* symbols) {
     uint32_t rd = (instruction >> 7) & 0x1F;
-    int32_t imm = ((instruction & 0xFF000) >> 12) | ((instruction & 0x100000) >> 9) |
-                  ((instruction & 0x7FE00000) >> 20) | ((instruction & 0x80000000) >> 11);
+    int32_t imm = sign_extend(((instruction >> 12) & 0xFF) | ((instruction >> 20) & 0x1) << 11 |
+                          ((instruction >> 21) & 0x3FF) << 1 | ((instruction >> 31) & 0x1) << 20, 21);
     imm <<= 1;
 
     snprintf(result, buf_size, "jal x%d, 0x%x", rd, addr + imm);
