@@ -18,33 +18,40 @@
 #define IMM_J(instr)     ((((instr) & 0x80000000) >> 11) | ((instr) & 0xFF000) | \
                           (((instr) & 0x100000) >> 9) | (((instr) & 0x7FE00000) >> 20))
 
-// Number of general-purpose registers
-#define NUM_REGS 32
-
 struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct symbols* symbols) {
     struct Stat stats = {0}; // Initialize instruction counter
     uint32_t pc = start_addr; // Program Counter
-    uint32_t reg[NUM_REGS] = {0}; // General-purpose registers
-    reg[0] = 0;
+    uint32_t reg[32] = {0}; // General-purpose registers
+    reg[0] = 0; // x0 is always zero
     int running = 1; // Simulation control flag
-
+    char disassembly[100]; // Buffer for disassembled instructions
+    uint32_t next_pc = 0;
+    
     while (running) {
         // Fetch
         uint32_t instruction = memory_rd_w(mem, pc);
+        uint32_t old_pc = pc;
         pc += 4; // Increment PC to next instruction
-        // Handle NOP (0x00000000)
-        if (instruction == 0x00000000) {
-            pc += 4; // Move to the next instruction
-            continue;
-        }
+
+        // Decode and log
+        disassemble(old_pc, instruction, disassembly, sizeof(disassembly), symbols);
+        
+        
+        // Prepare log entry
+        char log_entry[300];
+        snprintf(log_entry, sizeof(log_entry), "%5ld %s %08x : %08x     %-20s",
+                 stats.insns, pc == next_pc ? "    " : "=>", old_pc, instruction, disassembly);
+
         // Decode
         uint32_t opcode = OPCODE(instruction);
-
+        uint32_t rd, rs1, rs2, imm;
+        int branch_taken = 0; // Flag for conditional branch
+        
         switch (opcode) {
             case 0x33: { // R-Type instructions
-                uint32_t rd = RD(instruction);
-                uint32_t rs1 = RS1(instruction);
-                uint32_t rs2 = RS2(instruction);
+                rd = RD(instruction);
+                rs1 = RS1(instruction);
+                rs2 = RS2(instruction);
                 uint32_t funct3 = FUNCT3(instruction);
                 uint32_t funct7 = FUNCT7(instruction);
 
@@ -67,12 +74,15 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                     else if (funct3 == 0x6) reg[rd] = reg[rs1] % reg[rs2]; // REM
                     else if (funct3 == 0x7) reg[rd] = reg[rs1] % reg[rs2]; // REMU
                 }
+                
+                snprintf(log_entry + strlen(log_entry), sizeof(log_entry) - strlen(log_entry),
+                         " R[%d] <- 0x%x", rd, reg[rd]);
                 break;
             }
             case 0x03: { // I-Type (Load)
-                uint32_t rd = RD(instruction);
-                uint32_t rs1 = RS1(instruction);
-                int32_t imm = IMM_I(instruction);
+                rd = RD(instruction);
+                rs1 = RS1(instruction);
+                imm = IMM_I(instruction);
                 uint32_t addr = reg[rs1] + imm;
 
                 uint32_t funct3 = FUNCT3(instruction);
@@ -81,12 +91,15 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                 else if (funct3 == 0x2) reg[rd] = memory_rd_w(mem, addr); // LW
                 else if (funct3 == 0x4) reg[rd] = memory_rd_b(mem, addr); // LBU
                 else if (funct3 == 0x5) reg[rd] = memory_rd_h(mem, addr); // LHU
+                
+                snprintf(log_entry + strlen(log_entry), sizeof(log_entry) - strlen(log_entry),
+                         " R[%d] <- 0x%x", rd, reg[rd]);
                 break;
             }
             case 0x13: { // I-Type (Arithmetic Immediate)
-                uint32_t rd = RD(instruction);
-                uint32_t rs1 = RS1(instruction);
-                int32_t imm = IMM_I(instruction);
+                rd = RD(instruction);
+                rs1 = RS1(instruction);
+                imm = IMM_I(instruction);
 
                 uint32_t funct3 = FUNCT3(instruction);
                 if (funct3 == 0x0) reg[rd] = reg[rs1] + imm; // ADDI
@@ -104,30 +117,35 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                         reg[rd] = (int32_t)reg[rs1] >> a; // SRAI (Arithmetic Shift)
                     }
                 }
+                snprintf(log_entry + strlen(log_entry), sizeof(log_entry) - strlen(log_entry),
+                         " R[%d] <- 0x%x", rd, reg[rd]);
+
                 break;
             }
             case 0x67: { // I-Type (JALR)
-                uint32_t rd = RD(instruction);
-                uint32_t rs1 = RS1(instruction);
-                int32_t imm = IMM_I(instruction);
+                rd = RD(instruction);
+                rs1 = RS1(instruction);
+                imm = IMM_I(instruction);
 
                 uint32_t next_pc = pc;
                 pc = (reg[rs1] + imm) & ~1;
                 reg[rd] = pc+4;
                 // rd == 0 means no return address is stored
                 if (rd != 0) reg[rd] = next_pc; // Store the return address
+                snprintf(log_entry + strlen(log_entry), sizeof(log_entry) - strlen(log_entry)," R[%d] <- 0x%x", rd, reg[rd]);
                 break;
             }
             case 0x37: { // U-Type (LUI)
-                uint32_t rd = RD(instruction);
-                uint32_t imm = IMM_U(instruction); 
+                rd = RD(instruction);
+                imm = IMM_U(instruction); 
                 reg[rd] = imm; 
+                snprintf(log_entry + strlen(log_entry), sizeof(log_entry) - strlen(log_entry)," R[%d] <- 0x%x", rd, reg[rd]);
                 break;
             }
             case 0x23: { // S-Type (Stores)
-                uint32_t rs1 = RS1(instruction);
-                uint32_t rs2 = RS2(instruction);
-                int32_t imm = IMM_S(instruction); // Extract signed immediate
+                rs1 = RS1(instruction);
+                rs2 = RS2(instruction);
+                imm = IMM_S(instruction); // Extract signed immediate
                 uint32_t addr = reg[rs1] + imm;   // Compute memory address
 
                 uint32_t funct3 = FUNCT3(instruction);
@@ -138,37 +156,63 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                 } else if (funct3 == 0x2) { // SW
                     memory_wr_w(mem, addr, reg[rs2]); // Write all 4 bytes
                 }
+                snprintf(log_entry + strlen(log_entry), sizeof(log_entry) - strlen(log_entry)," M[0x%x] <- 0x%x", addr, reg[rs2]);
                 break;
             }
             case 0x63: { // SB-Type (Branches)
-                int32_t imm = IMM_B(instruction);
-                uint32_t rs1 = RS1(instruction);
-                uint32_t rs2 = RS2(instruction);
+                imm = IMM_B(instruction);
+                rs1 = RS1(instruction);
+                rs2 = RS2(instruction);
 
                 uint32_t funct3 = FUNCT3(instruction);
-                if (funct3 == 0x0 && reg[rs1] == reg[rs2]) pc += imm - 4; // BEQ
-                else if (funct3 == 0x1 && reg[rs1] != reg[rs2]) pc += imm - 4; // BNE
-                else if (funct3 == 0x4 && (int32_t)reg[rs1] < (int32_t)reg[rs2]) pc += imm - 4; // BLT
-                else if (funct3 == 0x5 && (int32_t)reg[rs1] >= (int32_t)reg[rs2]) pc += imm - 4; // BGE
-                else if (funct3 == 0x6 && reg[rs1] < reg[rs2]) pc += imm - 4; // BLTU
-                else if (funct3 == 0x7 && reg[rs1] >= reg[rs2]) pc += imm - 4; // BGEU
-                break;
+
+                switch (funct3) {
+                        case 0x0: // BEQ 
+                            branch_taken = (reg[rs1] == reg[rs2]);
+                            break;
+                        case 0x1: // BNE 
+                            branch_taken = (reg[rs1] != reg[rs2]);
+                            break;
+                        case 0x4: // BLT 
+                            branch_taken = ((int32_t)reg[rs1] < (int32_t)reg[rs2]);
+                            break;
+                        case 0x5: // BGE 
+                            branch_taken = ((int32_t)reg[rs1] >= (int32_t)reg[rs2]);
+                            break;
+                        case 0x6: // BLTU 
+                            branch_taken = (reg[rs1] < reg[rs2]);
+                            break;
+                        case 0x7: // BGEU 
+                            branch_taken = (reg[rs1] >= reg[rs2]);
+                            break;
+                        default: // Unknown branch type
+                            branch_taken = 0;
+                            break;
+                    }
+                    if (branch_taken) {
+                        next_pc = old_pc + imm;
+                    }
+                    //Adding to the log entry whether the branch was taken or not
+                    snprintf(log_entry + strlen(log_entry), sizeof(log_entry) - strlen(log_entry), " %s", branch_taken ? "{T}" : "{F}");
+                    break;
             }
+
             case 0x6F: { // UJ-Type (JAL)
-                uint32_t rd = RD(instruction);
-                int32_t imm = IMM_J(instruction);
+                rd = RD(instruction);
+                imm = IMM_J(instruction);
 
                 reg[rd] = pc; // Store return address
                 pc += imm - 4; // Jump
                 break;
             }
             case 0x17: {
-                uint32_t rd = RD(instruction);
-                uint32_t imm = IMM_U(instruction);
+                rd = RD(instruction);
+                imm = IMM_U(instruction);
                 reg[rd] = pc + imm;
                 break;
             }
             case 0x73: { // ECALL
+                uint32_t syscall = reg[17]; // A7
                 switch (reg[17]) { // System call type in A7 (x17)
                     case 1: //getchar
                         reg[10] = getchar();
@@ -184,15 +228,14 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
                 break;
             }
             default: {
-                fprintf(stderr, "Unknown instruction: 0x%08X\n", instruction);
+                snprintf(log_entry + strlen(log_entry), sizeof(log_entry) - strlen(log_entry), " Unknown");
                 running = 0; // Stop simulation
-                break;
             }
         }
 
         // Log execution
         if (log_file) {
-            fprintf(log_file, "PC: 0x%08X, Instruction: 0x%08X\n", pc, instruction);
+            fprintf(log_file, "%s\n", log_entry);
         }
 
         stats.insns++; // Increment instruction counter
