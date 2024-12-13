@@ -1,0 +1,20 @@
+PC: 0x00010180, Instruction: 0x00002197, 00010180: 00002197    UNKNOWN  zero, zero, zero
+PC: 0x00010184, Instruction: 0xbee18193, 00010184: bee18193    ADDI     gp, gp, -1042
+PC: 0x00010188, Instruction: 0x01000537, 00010188: 01000537    LUI      a0, 16777216
+PC: 0x0001018c, Instruction: 0x00050113, 0001018c: 00050113    ADDI     sp, a0, 0
+PC: 0x00010190, Instruction: 0x02000537, 00010190: 02000537    LUI      a0, 33554432
+PC: 0x00010194, Instruction: 0x260000ef, 00010194: 260000ef    JAL      ra, 00010654
+PC: 0x000103f4, Instruction: 0x000117b7, 000103f4: 000117b7    LUI      a5, 69632
+PC: 0x000103f8, Instruction: 0x5607a623, 000103f8: 5607a623    SW       zero, 1388(a5)
+PC: 0x000103fc, Instruction: 0x000117b7, 000103fc: 000117b7    LUI      a5, 69632
+PC: 0x00010400, Instruction: 0x56a7a823, 00010400: 56a7a823    SW       a0, 1392(a5)
+PC: 0x00010404, Instruction: 0x00008067, 00010404: 00008067    UNKNOWN  zero, zero, zero
+PC: 0x0001019c, Instruction: 0x008000ef, 0001019c: 008000ef    JAL      ra, 000101ac
+PC: 0x000101a4, Instruction: 0xff010113, 000101a4: ff010113    ADDI     sp, sp, -16
+PC: 0x000101a8, Instruction: 0x00112623, 000101a8: 00112623    SW       ra, 12(sp)
+PC: 0x000101ac, Instruction: 0x00450593, 000101ac: 00450593    ADDI     a1, a0, 4
+PC: 0x000101b0, Instruction: 0x00052503, 000101b0: 00052503    LW       a0, a0, 0
+PC: 0x000101b4, Instruction: 0xf2dff0ef, 000101b4: f2dff0ef    JAL      ra, fff121b2
+PC: 0x01000000, Instruction: 0x000101a0, 01000000: 000101a0    UNKNOWN  zero, zero, zero
+
+Simulated 536330198 instructions in 1360146 host ticks (394.318108 MIPS)
