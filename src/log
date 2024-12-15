@@ -1,20 +1,43 @@
-PC: 0x00010180, Instruction: 0x00002197, 00010180: 00002197    UNKNOWN  zero, zero, zero
-PC: 0x00010184, Instruction: 0xbee18193, 00010184: bee18193    ADDI     gp, gp, -1042
-PC: 0x00010188, Instruction: 0x01000537, 00010188: 01000537    LUI      a0, 16777216
-PC: 0x0001018c, Instruction: 0x00050113, 0001018c: 00050113    ADDI     sp, a0, 0
-PC: 0x00010190, Instruction: 0x02000537, 00010190: 02000537    LUI      a0, 33554432
-PC: 0x00010194, Instruction: 0x260000ef, 00010194: 260000ef    JAL      ra, 00010654
-PC: 0x000103f4, Instruction: 0x000117b7, 000103f4: 000117b7    LUI      a5, 69632
-PC: 0x000103f8, Instruction: 0x5607a623, 000103f8: 5607a623    SW       zero, 1388(a5)
-PC: 0x000103fc, Instruction: 0x000117b7, 000103fc: 000117b7    LUI      a5, 69632
-PC: 0x00010400, Instruction: 0x56a7a823, 00010400: 56a7a823    SW       a0, 1392(a5)
-PC: 0x00010404, Instruction: 0x00008067, 00010404: 00008067    UNKNOWN  zero, zero, zero
-PC: 0x0001019c, Instruction: 0x008000ef, 0001019c: 008000ef    JAL      ra, 000101ac
-PC: 0x000101a4, Instruction: 0xff010113, 000101a4: ff010113    ADDI     sp, sp, -16
-PC: 0x000101a8, Instruction: 0x00112623, 000101a8: 00112623    SW       ra, 12(sp)
-PC: 0x000101ac, Instruction: 0x00450593, 000101ac: 00450593    ADDI     a1, a0, 4
-PC: 0x000101b0, Instruction: 0x00052503, 000101b0: 00052503    LW       a0, a0, 0
-PC: 0x000101b4, Instruction: 0xf2dff0ef, 000101b4: f2dff0ef    JAL      ra, fff121b2
-PC: 0x01000000, Instruction: 0x000101a0, 01000000: 000101a0    UNKNOWN  zero, zero, zero
+    0 => 0001017c : 00002197     lui x3, 0x2000      
+    1 => 00010180 : bee18193     addi x3, x3, -1042   R[3] <- 0x11d6e
+    2 => 00010184 : 01000537     lui x10, 0x1000000   R[10] <- 0x1000000
+    3 => 00010188 : 00050113     addi x2, x10, 0      R[2] <- 0x1000000
+    4 => 0001018c : 02000537     lui x10, 0x2000000   R[10] <- 0x2000000
+    5 => 00010190 : 260000ef     jal x1, 0x103f0      JAL: PC=0x10190, Target=0x103f4, Rd=x1, Value=0x10198
+    6 => 000103f4 : 5607a623     sw x0, 1388(x15)     M[0x56c] <- 0x0
+    7 => 000103f8 : 000117b7     lui x15, 0x11000     R[15] <- 0x11000
+    8 => 000103fc : 56a7a823     sw x10, 1392(x15)    M[0x11570] <- 0x2000000
+    9 => 00010400 : 00008067     jalr x0, 0(x1)       JALR: PC=0x10404, Target=0x10198, Rd=x0, Value=0x0
+   10 => 00010198 : 008000ef     jal x1, 0x101a0      JAL: PC=0x10198, Target=0x101a4, Rd=x1, Value=0x101a0
+   11 => 000101a4 : 00112623     sw x1, 12(x2)        M[0x100000c] <- 0x101a0
+   12 => 000101a8 : 00450593     addi x11, x10, 4     R[11] <- 0x2000004
+   13 => 000101ac : 00052503     lw x10, 0(x10)       R[10] <- 0x0
+   14 => 000101b0 : f2dff0ef     jal x1, 0x100dc      JAL: PC=0x101b0, Target=0x100e0, Rd=x1, Value=0x101b8
+   15 => 000100e0 : 02112623     sw x1, 44(x2)        M[0x100002c] <- 0x101b8
+   16 => 000100e4 : 02812423     sw x8, 40(x2)        M[0x1000028] <- 0x0
+   17 => 000100e8 : 02912223     sw x9, 36(x2)        M[0x1000024] <- 0x0
+   18 => 000100ec : 00058413     addi x8, x11, 0      R[8] <- 0x2000004
+   19 => 000100f0 : 00100793     addi x15, x0, 1      R[15] <- 0x1
+   20 => 000100f4 : 06a7d863     bge x15, x10, 0x101d4 {T}
+   21 => 00010164 : 00010537     lui x10, 0x10000     R[10] <- 0x10000
+   22 => 00010168 : 53c50513     addi x10, x10, 1340  R[10] <- 0x1053c
+   23 => 0001016c : 114000ef     jal x1, 0x10280      JAL: PC=0x1016c, Target=0x10284, Rd=x1, Value=0x10174
+   24 => 00010284 : 00112623     sw x1, 12(x2)        M[0x100000c] <- 0x10174
+   25 => 00010288 : 00812423     sw x8, 8(x2)         M[0x1000008] <- 0x2000004
+   26 => 0001028c : 00050413     addi x8, x10, 0      R[8] <- 0x1053c
+   27 => 00010290 : 00054503     lbu x10, 0(x10)      R[10] <- 0x66
+   28 => 00010294 : 00050a63     beq x10, x0, 0x102bc {F}
+   29 => 00010298 : 00140413     addi x8, x8, 1       R[8] <- 0x1053d
+   30 => 0001029c : f39ff0ef     jal x1, 0x101d4      JAL: PC=0x1029c, Target=0x101d8, Rd=x1, Value=0x102a4
+   31 => 000101d8 : 00078513     addi x10, x15, 0     R[10] <- 0x1
+   32 => 000101dc : 00200893     addi x17, x0, 2      R[17] <- 0x2
+ECALL: A7=0x2, A0=0x1, PC=0x101e4
+Syscall putchar('') executed
+   33 => 000101e0 : 00000073     Unknown instruction (0x00000073)
+   34 => 000101e8 : 00050513     addi x10, x10, 0     R[10] <- 0x1
+   35 => 000101ec : 00300893     addi x17, x0, 3      R[17] <- 0x3
+ECALL: A7=0x3, A0=0x1, PC=0x101f4
+Exit ECALL 3 received. Terminating simulation with A0=0x1.
+   36 => 000101f0 : 00000073     Unknown instruction (0x00000073)
 
-Simulated 536330198 instructions in 1360146 host ticks (394.318108 MIPS)
+Simulated 37 instructions in 95 host ticks (0.389474 MIPS)
