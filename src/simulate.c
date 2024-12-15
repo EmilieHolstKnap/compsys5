@@ -2,6 +2,8 @@
 #include "memory.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
+#include "read_elf.h"
 
 // Helper macros for extracting instruction fields
 #define OPCODE(instr)    ((instr) & 0x7F)
@@ -27,6 +29,14 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
     char disassembly[100]; // Buffer for disassembled instructions
     uint32_t next_pc = 0;
     
+
+    if (!log_file) {
+        fprintf(stderr, "Debug: log_file is NULL at instruction %ld\n", stats.insns);
+    } else {
+        fprintf(stderr, "Debug: log_file is valid at instruction %ld\n", stats.insns);
+    }
+
+
     while (running) {
         // Fetch
         uint32_t instruction = memory_rd_w(mem, pc);
@@ -236,10 +246,14 @@ struct Stat simulate(struct memory *mem, int start_addr, FILE *log_file, struct 
         // Log execution
         if (log_file) {
             fprintf(log_file, "%s\n", log_entry);
+        } else {
+            printf("Log file not provided; skipping log entry.\n");
         }
 
         stats.insns++; // Increment instruction counter
     }
+
+    //fprintf(log_file, "end result: %d \n", reg[10]);
 
     return stats; // Return statistics
 }
